@@ -1,1 +1,1 @@
-# start — serve
+# entry point for the bhoomi package
