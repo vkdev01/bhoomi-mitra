@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bhoomi Mitra — ask about any village</title>
+<style>
+  :root {
+    --ink: #14201b;
+    --muted: #5b6b63;
+    --line: #dfe6e1;
+    --bg: #f6f8f6;
+    --card: #ffffff;
+    --green: #1f6f4a;
+    --green-soft: #e8f3ec;
+    --amber: #8a5a00;
+    --amber-soft: #fdf3e0;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(20, 32, 27, .06), 0 8px 24px rgba(20, 32, 27, .05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    padding: 22px 20px 18px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #ffffff, #fbfcfb);
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -.01em; }
+  .sub { margin: 0; color: var(--muted); font-size: .93rem; }
+  .badges { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: .76rem; padding: 3px 9px; border-radius: 999px;
+    background: var(--green-soft); color: var(--green); border: 1px solid #cfe4d8;
+    font-weight: 600;
+  }
+  .badge.warn { background: var(--amber-soft); color: var(--amber); border-color: #f0dcb8; }
+  main { max-width: 860px; margin: 0 auto; padding: 22px 20px 60px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px; box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .card h2 { margin: 0 0 14px; font-size: 1rem; letter-spacing: .01em; }
+  label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 200px; }
+  input, select, textarea, button { font: inherit; }
+  input, select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 10px; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #b9dcc8; border-color: #9ccbaf; }
+  textarea { resize: vertical; min-height: 76px; }
+  button {
+    cursor: pointer; border: 1px solid transparent; border-radius: 10px;
+    padding: 10px 18px; font-weight: 600; background: var(--green); color: #fff;
+    transition: filter .15s ease;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.08); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  button.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .hint { color: var(--muted); font-size: .82rem; }
+  .err {
+    background: #fdeceb; border: 1px solid #f5c9c4; color: #8a1f14;
+    padding: 10px 12px; border-radius: 10px; font-size: .88rem; margin-top: 14px;
+  }
+  .notes { margin-top: 12px; font-size: .85rem; color: var(--amber); }
+  .notes ul { margin: 6px 0 0; padding-left: 18px; }
+  .answer { margin-top: 16px; padding: 14px 16px; background: #f4faf6; border-left: 3px solid var(--green); border-radius: 8px; }
+  .answer p { margin: 0; white-space: pre-wrap; }
+  .trace { margin-top: 12px; font-size: .82rem; color: var(--muted); }
+  .trace ol { margin: 6px 0 0; padding-left: 20px; }
+  .trace li { margin-bottom: 3px; }
+  .trace .bad { color: #8a1f14; }
+  .bars { margin-top: 6px; }
+  .bar { margin-bottom: 9px; }
+  .bar-top { display: flex; justify-content: space-between; font-size: .84rem; margin-bottom: 3px; }
+  .bar-track { height: 8px; background: #eef2ef; border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--green); border-radius: 999px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; }
+  .stat .k { font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .stat .v { font-size: 1.02rem; font-weight: 600; margin-top: 2px; }
+  ul.facilities { list-style: none; margin: 12px 0 0; padding: 0; }
+  ul.facilities li {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: .9rem;
+  }
+  ul.facilities li:last-child { border-bottom: 0; }
+  ul.facilities .dist { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .pill { font-size: .7rem; padding: 2px 7px; border-radius: 999px; background: #eef2ef; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+  .hidden { display: none !important; }
+  .spinner {
+    width: 15px; height: 15px; border: 2px solid #ffffff66; border-top-color: #fff;
+    border-radius: 50%; display: inline-block; animation: spin .7s linear infinite;
+    vertical-align: -2px; margin-right: 7px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { text-align: center; color: var(--muted); font-size: .78rem; padding: 0 20px 30px; }
+  a { color: var(--green); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Bhoomi Mitra</h1>
+    <p class="sub">Ask about any village — land use, nearby hospitals and post offices, road distance. Built on ISRO Bhuvan data with Sarvam AI.</p>
+    <div class="badges" id="badges"></div>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Ask a question</h2>
+    <label for="question">Your question</label>
+    <textarea id="question" placeholder="e.g. Tell me about Sekuru — what is the land used for, and how far is the nearest hospital?"></textarea>
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label for="language">Answer language</label>
+        <select id="language"></select>
+      </div>
+      <div>
+        <label for="place">Place (optional)</label>
+        <input id="place" list="places" placeholder="Sekuru" />
+        <datalist id="places"></datalist>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="ask">Ask</button>
+      <button id="mic" class="ghost hidden" type="button">🎙 Speak</button>
+      <span class="hint" id="mic-hint"></span>
+    </div>
+    <div id="ask-error" class="err hidden"></div>
+    <div id="ask-result" class="hidden">
+      <div class="answer"><p id="answer-text"></p></div>
+      <audio id="answer-audio" class="hidden" controls style="margin-top:12px;width:100%"></audio>
+      <div class="trace" id="ask-trace"></div>
+      <div class="notes hidden" id="ask-notes"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Village profile</h2>
+    <div class="row">
+      <div>
+        <label for="report-place">Village or town</label>
+        <input id="report-place" list="places" placeholder="Sekuru" />
+      </div>
+      <div style="flex:0 1 170px">
+        <label for="radius">Radius (km)</label>
+        <input id="radius" type="number" min="1" max="50" value="5" />
+      </div>
+    </div>
+    <div class="actions">
+      <button id="report">Get profile</button>
+    </div>
+    <div id="report-error" class="err hidden"></div>
+    <div id="report-result" class="hidden"></div>
+  </section>
+</main>
+
+<footer>
+  Data: ISRO / NRSC Bhuvan · Speech &amp; language: Sarvam AI ·
+  <span id="source-foot"></span>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { config: null, recorder: null, chunks: [] };
+
+function show(el) { el.classList.remove("hidden"); }
+function hide(el) { el.classList.add("hidden"); }
+
+function fail(target, message) {
+  target.textContent = message;
+  show(target);
+}
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = body.detail || body.error || `HTTP ${res.status}`;
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  return body;
+}
+
+async function loadConfig() {
+  const cfg = await api("/api/config");
+  state.config = cfg;
+
+  const badges = $("badges");
+  badges.innerHTML = "";
+  const geo = document.createElement("span");
+  geo.className = "badge" + (cfg.geo_source === "fixture" ? " warn" : "");
+  geo.textContent = cfg.geo_source === "fixture" ? "sample data (no Bhuvan token)" : "live ISRO Bhuvan";
+  badges.appendChild(geo);
+
+  const llm = document.createElement("span");
+  llm.className = "badge" + (cfg.llm_source === "rule-based-offline" ? " warn" : "");
+  llm.textContent = cfg.llm_source === "rule-based-offline" ? "offline planner" : cfg.chat_model;
+  badges.appendChild(llm);
+
+  const speech = document.createElement("span");
+  speech.className = "badge" + (cfg.speech_available ? "" : " warn");
+  speech.textContent = cfg.speech_available ? "voice enabled" : "voice off (no Sarvam key)";
+  badges.appendChild(speech);
+
+  $("source-foot").textContent = cfg.geo_source;
+
+  const lang = $("language");
+  lang.innerHTML = "";
+  for (const code of cfg.languages) {
+    const opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = code;
+    if (code === cfg.default_language) opt.selected = true;
+    lang.appendChild(opt);
+  }
+
+  for (const listId of ["places"]) {
+    const dl = $(listId);
+    dl.innerHTML = "";
+    for (const name of cfg.sample_places || []) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      dl.appendChild(opt);
+    }
+  }
+
+  if (cfg.speech_available && navigator.mediaDevices) {
+    show($("mic"));
+  } else {
+    $("mic-hint").textContent = cfg.speech_available
+      ? "Recording needs a browser with microphone support."
+      : "Set SARVAM_API_KEY to enable voice input.";
+  }
+}
+
+function renderTrace(trace) {
+  const host = $("ask-trace");
+  if (!trace || !trace.length) { host.innerHTML = ""; return; }
+  const items = trace.map((t) =>
+    `<li class="${t.ok ? "" : "bad"}"><strong>${escapeHtml(t.name)}</strong> — ${escapeHtml(t.summary)}</li>`
+  ).join("");
+  host.innerHTML = `<div>What the assistant did:</div><ol>${items}</ol>`;
+}
+
+function renderNotes(notes) {
+  const host = $("ask-notes");
+  if (!notes || !notes.length) { host.innerHTML = ""; hide(host); return; }
+  host.innerHTML = "<strong>Notes</strong><ul>" +
+    notes.map((n) => `<li>${escapeHtml(n)}</li>`).join("") + "</ul>";
+  show(host);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+async function ask() {
+  const question = $("question").value.trim();
+  const err = $("ask-error");
+  hide(err);
+  if (!question) { fail(err, "Please type a question first."); return; }
+
+  const button = $("ask");
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span>Thinking…';
+  try {
+    const body = {
+      question,
+      language_code: $("language").value,
+      place: $("place").value.trim() || null,
+    };
+    const result = await api("/api/assistant/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    $("answer-text").textContent = result.answer;
+    renderTrace(result.tool_trace);
+    renderNotes(result.notes);
+    hide($("answer-audio"));
+    show($("ask-result"));
+  } catch (e) {
+    fail(err, e.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Ask";
+  }
+}
+
+async function getReport() {
+  const err = $("report-error");
+  hide(err);
+  const place = $("report-place").value.trim();
+  if (!place) { fail(err, "Enter a village or town name."); return; }
+
+  const button = $("report");
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span>Loading…';
+  try {
+    const body = {
+      place,
+      radius_m: Math.round(Number($("radius").value || 5) * 1000),
+      include_routes: true,
+    };
+    const report = await api("/api/village/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    renderReport(report);
+    show($("report-result"));
+  } catch (e) {
+    fail(err, e.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Get profile";
+  }
+}
+
+function renderReport(report) {
+  const v = report.village || {};
+  const parts = [];
+
+  parts.push(`<h2 style="margin-bottom:6px">${escapeHtml(v.name || "Village")}</h2>`);
+  const where = [v.sub_district, v.district, v.state].filter(Boolean).map(escapeHtml).join(", ");
+  if (where) parts.push(`<p class="hint" style="margin:0 0 10px">${where}</p>`);
+
+  const stats = [];
+  if (v.population != null) stats.push(["Population", v.population.toLocaleString("en-IN")]);
+  if (v.households != null) stats.push(["Households", v.households.toLocaleString("en-IN")]);
+  if (v.location) stats.push(["Coordinates", `${v.location.lat.toFixed(4)}, ${v.location.lon.toFixed(4)}`]);
+  if (report.land_cover) stats.push(["Area analysed", `${report.land_cover.total_area_sq_km.toFixed(1)} km²`]);
+  if (stats.length) {
+    parts.push('<div class="grid">' + stats.map(([k, val]) =>
+      `<div class="stat"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(val)}</div></div>`
+    ).join("") + "</div>");
+  }
+
+  if (report.land_cover && report.land_cover.classes.length) {
+    parts.push(`<h2 style="margin:20px 0 8px">Land cover (${escapeHtml(report.land_cover.year)})</h2>`);
+    parts.push('<div class="bars">' + report.land_cover.classes.map((c) => {
+      const pct = c.share_pct == null ? 0 : c.share_pct;
+      return `<div class="bar">
+        <div class="bar-top"><span>${escapeHtml(c.label)}</span><span>${pct.toFixed(1)}% · ${c.area_sq_km.toFixed(2)} km²</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, pct)}%"></div></div>
+      </div>`;
+    }).join("") + "</div>");
+  }
+
+  if (report.facilities && report.facilities.length) {
+    parts.push('<h2 style="margin:20px 0 0">Nearby facilities</h2><ul class="facilities">');
+    for (const f of report.facilities) {
+      const dist = f.distance_m == null ? "" : `${(f.distance_m / 1000).toFixed(1)} km`;
+      parts.push(`<li><span><span class="pill">${escapeHtml(f.kind)}</span> ${escapeHtml(f.name)}</span><span class="dist">${escapeHtml(dist)}</span></li>`);
+    }
+    parts.push("</ul>");
+  }
+
+  if (report.routes && report.routes.length) {
+    const r = report.routes[0];
+    if (r.distance_km != null) {
+      parts.push(`<p class="hint" style="margin-top:14px">Road distance to ${escapeHtml(r.destination_name || "nearest hospital")}: <strong>${r.distance_km.toFixed(1)} km</strong>${r.duration_min != null ? ` (about ${Math.round(r.duration_min)} min)` : ""}.</p>`);
+    }
+  }
+
+  if (report.notes && report.notes.length) {
+    parts.push('<div class="notes"><strong>Notes</strong><ul>' +
+      report.notes.map((n) => `<li>${escapeHtml(n)}</li>`).join("") + "</ul></div>");
+  }
+
+  parts.push(`<p class="hint" style="margin-top:14px">Source: ${escapeHtml(report.data_source)}</p>`);
+  $("report-result").innerHTML = parts.join("");
+}
+
+async function toggleMic() {
+  const err = $("ask-error");
+  hide(err);
+  if (state.recorder && state.recorder.state === "recording") {
+    state.recorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.chunks = [];
+    const recorder = new MediaRecorder(stream);
+    state.recorder = recorder;
+
+    recorder.ondataavailable = (e) => { if (e.data.size) state.chunks.push(e.data); };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      $("mic").textContent = "🎙 Speak";
+      const blob = new Blob(state.chunks, { type: recorder.mimeType || "audio/webm" });
+      await sendVoice(blob);
+    };
+
+    recorder.start();
+    $("mic").textContent = "⏹ Stop";
+  } catch (e) {
+    fail(err, "Could not start recording: " + e.message);
+  }
+}
+
+async function sendVoice(blob) {
+  const button = $("ask");
+  const err = $("ask-error");
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span>Listening…';
+  try {
+    const form = new FormData();
+    form.append("audio", blob, "recording.webm");
+    form.append("language_code", $("language").value);
+    const place = $("place").value.trim();
+    if (place) form.append("place", place);
+
+    const result = await api("/api/assistant/voice", { method: "POST", body: form });
+    if (result.transcript) $("question").value = result.transcript;
+    $("answer-text").textContent = result.answer;
+    renderTrace(result.tool_trace);
+    renderNotes(result.notes);
+
+    const audio = $("answer-audio");
+    if (result.audio_base64) {
+      audio.src = `data:${result.audio_mime || "audio/mpeg"};base64,${result.audio_base64}`;
+      show(audio);
+      audio.play().catch(() => {});
+    } else {
+      hide(audio);
+    }
+    show($("ask-result"));
+  } catch (e) {
+    fail(err, e.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Ask";
+  }
+}
+
+$("ask").addEventListener("click", ask);
+$("report").addEventListener("click", getReport);
+$("mic").addEventListener("click", toggleMic);
+$("question").addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") ask();
+});
+
+loadConfig().catch((e) => {
+  document.getElementById("badges").innerHTML =
+    '<span class="badge warn">could not load config: ' + escapeHtml(e.message) + "</span>";
+});
+</script>
+</body>
+</html>
