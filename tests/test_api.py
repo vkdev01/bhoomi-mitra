@@ -159,3 +159,33 @@ def test_upstream_outage_maps_to_503(client, container):
     response = client.post("/api/village/report", json={"place": "Sekuru"})
     assert response.status_code == 503
     assert response.json()["error"] == "upstream_unavailable"
+
+
+# -- map layers -----------------------------------------------------------
+
+
+def test_map_layers_endpoint_lists_bases_and_overlays(client):
+    body = client.get("/api/map/layers").json()
+    assert [b["id"] for b in body["base_layers"]] == ["satellite", "plain"]
+    assert len(body["overlays"]) == 20
+    assert body["default_overlay_id"] == body["overlays"][-1]["id"]
+
+
+def test_map_layers_point_at_the_isro_wms(client):
+    body = client.get("/api/map/layers").json()
+    overlay = body["overlays"][0]
+    assert overlay["layer_name"].startswith("LULC250K_")
+    assert overlay["service_url"].startswith("https://")
+    assert "Bhuvan" in overlay["attribution"]
+
+
+def test_map_layers_expose_no_secrets(client):
+    body = client.get("/api/map/layers").text.lower()
+    assert "api_key" not in body
+    assert "bhuvan_token" not in body
+
+
+def test_map_layers_year_labels_are_human_readable(client):
+    years = [o["year"] for o in client.get("/api/map/layers").json()["overlays"]]
+    assert "2015-16" in years
+    assert "2024-25" in years
