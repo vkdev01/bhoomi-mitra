@@ -37,6 +37,8 @@ The loop is bounded, traced, and shown in the UI ("what the assistant did"), so 
 
 **Village profile.** A deterministic endpoint that assembles the same data into a structured report — no LLM in the path, so it is fast, free and reproducible.
 
+**Map and charts.** A satellite view centred on the village, with ISRO's land-cover map laid over it as an OGC WMS layer — one per reference year from 2004-05 to 2024-25, so you can flip between years and watch a coastline or a city edge move. Land-cover composition is drawn as a donut chart with a colour-coded legend. Leaflet is vendored into the repo, so the interface has no runtime dependency on a CDN.
+
 **Voice.** Speech-to-text (Saaras), the agent loop, then text-to-speech (Bulbul) played back in the browser. In a regional language end to end.
 
 ---
@@ -55,7 +57,7 @@ python main.py            # → http://localhost:8000
 Verify it:
 
 ```bash
-python -m pytest          # 136 tests
+python -m pytest          # 152 tests
 python scripts/smoke_test.py   # boots a real server and exercises every endpoint
 ```
 
@@ -134,6 +136,7 @@ Interactive docs at `/docs`. Full schema at `/openapi.json`.
 | `POST` | `/api/village/report` | Structured profile — `{place}` or `{lat, lon}`, plus `radius_m`, `year`, `include_routes` |
 | `POST` | `/api/assistant/ask` | Agentic answer — `{question, language_code, place?}` |
 | `POST` | `/api/assistant/voice` | Multipart audio → transcript, answer, and synthesized speech (503 without a Sarvam key) |
+| `GET` | `/api/map/layers` | Base maps and ISRO WMS overlays the interface can draw |
 
 ```bash
 curl -X POST localhost:8000/api/village/report \
@@ -163,7 +166,11 @@ scripts/          smoke_test.py
 
 **Bhuvan** (ISRO / National Remote Sensing Centre) — village geocoding, LULC statistics, proximity and routing services. Free for use with a token.
 
+**Bhuvan WMS** — land-cover tiles at 1:250,000, one layer per reference year, drawn as the map overlay.
+
 **Sarvam AI** — Sarvam-105B for reasoning and tool calling, Saaras for speech-to-text, Bulbul for text-to-speech, Mayura for translation.
+
+**Satellite basemap** — Esri World Imagery, attributed in the map corner. It is a backdrop, not ISRO data; swap `BHOOMI_SATELLITE_TILES` for any tile service, or choose "Plain" in the map toolbar to drop it.
 
 Things you should know before relying on this:
 
@@ -172,6 +179,7 @@ Things you should know before relying on this:
 - **LULC scale is a choice.** 1:50,000 (`BHUVAN_LULC_SCALE=50k`) is finer but single-epoch; 1:250,000 (`250k`, the default) supports year-over-year queries.
 - **The offline planner is not the LLM.** With no Sarvam key, `RuleBasedLanguageModel` keyword-matches a place and calls tools deterministically. It exercises the loop; it does not understand language. The UI says so.
 - **Bhuvan's response field names drift.** The mappers accept documented aliases and fail loudly rather than guessing — check `tests/test_bhuvan_adapter.py` when a mapping breaks.
+- **The map overlay is coarse.** ISRO's 1:250,000 service only paints areas wider than roughly 100 km, so the overlay appears when you zoom out and disappears when you zoom in. That is a property of the service, not a bug in the interface; the toolbar says so. Use the 1:50,000 service for finer detail if you have access to it.
 - **NavIC/GAGAN is not a public API.** Signal data comes through a research Announcement of Opportunity, so this project does not use it.
 
 ---
@@ -179,7 +187,7 @@ Things you should know before relying on this:
 ## Testing
 
 ```bash
-python -m pytest                     # 136 tests, ~1.5 s, no network
+python -m pytest                     # 152 tests, ~2 s, no network
 python -m pytest tests/test_contracts.py -v   # substitutability, both adapters
 python scripts/smoke_test.py         # 15 end-to-end checks against a real server
 ruff check src tests
@@ -192,6 +200,7 @@ The suite never touches the network: Bhuvan is exercised through `httpx.MockTran
 ## Roadmap
 
 - MOSDAC weather and ocean forecasts as additional tools (a new adapter + a `registry.register` call)
+- NDVI / crop-health raster layers alongside the land-cover overlay
 - Bhoonidhi STAC search for satellite imagery alongside the statistics
 - WhatsApp / IVR channel, so the voice pipeline reaches feature phones
 - Response caching keyed on rounded coordinates, to stay inside Bhuvan's rate limits
