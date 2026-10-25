@@ -1,1 +1,1 @@
-from __future__ import annotations
+"""Start the app with uvicorn."""
