@@ -1,1 +1,1 @@
-"""Start the app with uvicorn."""
+# start — serve
