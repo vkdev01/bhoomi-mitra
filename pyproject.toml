@@ -41,7 +41,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-bhoomi = ["web/static/*.html"]
+bhoomi = ["web/static/*.html", "web/static/vendor/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
