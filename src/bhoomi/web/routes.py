@@ -14,6 +14,11 @@ from bhoomi.application.assistant import AskRequest
 from bhoomi.application.village_report import ReportRequest
 from bhoomi.composition import Container
 from bhoomi.domain.errors import PlaceNotFoundError, UpstreamUnavailableError
+from bhoomi.domain.map_layers import (
+    default_overlay_id,
+    lulc_overlays,
+    raster_bases,
+)
 from bhoomi.domain.models import Coordinates
 from bhoomi.web.presenters import report_to_out
 from bhoomi.web.schemas import (
@@ -21,10 +26,13 @@ from bhoomi.web.schemas import (
     AskOut,
     ConfigOut,
     HealthOut,
+    MapLayersOut,
+    RasterBaseOut,
     ReportIn,
     ReportOut,
     ToolTraceOut,
     VoiceOut,
+    WmsOverlayOut,
 )
 
 router = APIRouter()
@@ -52,6 +60,19 @@ def config(request: Request) -> ConfigOut:
         **summary,
         languages=LANGUAGES,
         sample_places=_sample_places(container),
+    )
+
+
+@router.get("/api/map/layers", response_model=MapLayersOut, tags=["map"])
+def map_layers(request: Request) -> MapLayersOut:
+    """The base maps and ISRO thematic overlays the interface can draw."""
+    settings = _container(request).settings
+    overlays = lulc_overlays(settings.bhuvan_wms_url)
+    bases = raster_bases(settings.satellite_tile_url)
+    return MapLayersOut(
+        base_layers=[RasterBaseOut(**b.as_dict()) for b in bases],
+        overlays=[WmsOverlayOut(**o.as_dict()) for o in overlays],
+        default_overlay_id=default_overlay_id(overlays),
     )
 
 
