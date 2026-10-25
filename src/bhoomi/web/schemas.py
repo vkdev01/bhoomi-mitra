@@ -124,6 +124,31 @@ class ConfigOut(BaseModel):
     sample_places: list[str] = []
 
 
+class RasterBaseOut(BaseModel):
+    id: str
+    title: str
+    url_template: str | None = None
+    attribution: str
+    max_zoom: int
+    background_colour: str
+
+
+class WmsOverlayOut(BaseModel):
+    id: str
+    title: str
+    layer_name: str
+    service_url: str
+    year: str
+    attribution: str
+    opacity: float
+
+
+class MapLayersOut(BaseModel):
+    base_layers: list[RasterBaseOut]
+    overlays: list[WmsOverlayOut]
+    default_overlay_id: str | None = None
+
+
 class HealthOut(BaseModel):
     status: str
     data_source: str
