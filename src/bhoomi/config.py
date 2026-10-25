@@ -50,6 +50,11 @@ class Settings:
 
     sarvam_base_url: str = "https://api.sarvam.ai"
     bhuvan_base_url: str = "https://bhuvan-app1.nrsc.gov.in/api"
+    bhuvan_wms_url: str = "https://bhuvan-ras2.nrsc.gov.in/cgi-bin/LULC250K.exe"
+    satellite_tile_url: str = (
+        "https://server.arcgisonline.com/ArcGIS/rest/services/"
+        "World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    )
 
     chat_model: str = "sarvam-105b"
     stt_model: str = "saaras:v3"
@@ -103,6 +108,16 @@ class Settings:
             bhuvan_token=_env("BHUVAN_TOKEN"),
             sarvam_base_url=_env("SARVAM_BASE_URL", "https://api.sarvam.ai") or "",
             bhuvan_base_url=_env("BHUVAN_BASE_URL", "https://bhuvan-app1.nrsc.gov.in/api") or "",
+            bhuvan_wms_url=_env(
+                "BHUVAN_WMS_URL", "https://bhuvan-ras2.nrsc.gov.in/cgi-bin/LULC250K.exe"
+            )
+            or "https://bhuvan-ras2.nrsc.gov.in/cgi-bin/LULC250K.exe",
+            satellite_tile_url=_env(
+                "BHOOMI_SATELLITE_TILES",
+                "https://server.arcgisonline.com/ArcGIS/rest/services/"
+                "World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            )
+            or "",
             chat_model=_env("SARVAM_CHAT_MODEL", "sarvam-105b") or "sarvam-105b",
             stt_model=_env("SARVAM_STT_MODEL", "saaras:v3") or "saaras:v3",
             tts_model=_env("SARVAM_TTS_MODEL", "bulbul:v3") or "bulbul:v3",
