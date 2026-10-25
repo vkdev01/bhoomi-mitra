@@ -1,0 +1,184 @@
+{
+  "_notice": "SAMPLE DATA for offline development and tests only. These records mirror the shape of Bhuvan responses so the app can run without an access token. They are NOT authoritative ISRO figures. Set BHUVAN_TOKEN to use live data.",
+  "villages": [
+    {
+      "name": "Sekuru",
+      "state": "Andhra Pradesh",
+      "district": "Guntur",
+      "sub_district": "Chebrolu",
+      "population": 10207,
+      "households": 2747,
+      "lat": 16.2794,
+      "lon": 80.5884,
+      "village_id": "2817004002130200",
+      "aliases": [
+        "sekuru",
+        "chebrolu"
+      ]
+    },
+    {
+      "name": "Nidamarru",
+      "state": "Andhra Pradesh",
+      "district": "Krishna",
+      "sub_district": "Penamaluru",
+      "population": 6120,
+      "households": 1712,
+      "lat": 16.421,
+      "lon": 80.718,
+      "village_id": "2817004002130211",
+      "aliases": [
+        "nidamarru",
+        "penamaluru"
+      ]
+    },
+    {
+      "name": "Hosakote",
+      "state": "Karnataka",
+      "district": "Bengaluru Rural",
+      "sub_district": "Hosakote",
+      "population": 8420,
+      "households": 2050,
+      "lat": 13.071,
+      "lon": 77.798,
+      "village_id": "2917004002130305",
+      "aliases": [
+        "hosakote",
+        "hoskote"
+      ]
+    }
+  ],
+  "land_cover": {
+    "Sekuru": {
+      "year": "2015_16",
+      "classes": [
+        {
+          "code": "l02",
+          "label": "Agricultural land",
+          "area_sq_km": 22.4
+        },
+        {
+          "code": "l01",
+          "label": "Built-up land",
+          "area_sq_km": 3.1
+        },
+        {
+          "code": "l05",
+          "label": "Water bodies",
+          "area_sq_km": 1.6
+        },
+        {
+          "code": "l15",
+          "label": "Scrub land",
+          "area_sq_km": 0.9
+        }
+      ]
+    },
+    "Nidamarru": {
+      "year": "2015_16",
+      "classes": [
+        {
+          "code": "l02",
+          "label": "Agricultural land",
+          "area_sq_km": 16.8
+        },
+        {
+          "code": "l01",
+          "label": "Built-up land",
+          "area_sq_km": 5.2
+        },
+        {
+          "code": "l05",
+          "label": "Water bodies",
+          "area_sq_km": 2.7
+        },
+        {
+          "code": "l17",
+          "label": "Crop land",
+          "area_sq_km": 4.1
+        }
+      ]
+    },
+    "Hosakote": {
+      "year": "2015_16",
+      "classes": [
+        {
+          "code": "l02",
+          "label": "Agricultural land",
+          "area_sq_km": 14.2
+        },
+        {
+          "code": "l01",
+          "label": "Built-up land",
+          "area_sq_km": 7.8
+        },
+        {
+          "code": "l16",
+          "label": "Tree clad area",
+          "area_sq_km": 3.4
+        },
+        {
+          "code": "l22",
+          "label": "Tank / reservoir",
+          "area_sq_km": 1.1
+        }
+      ]
+    }
+  },
+  "facilities": {
+    "Sekuru": [
+      {
+        "kind": "hospital",
+        "name": "Primary Health Centre, Chebrolu",
+        "lat": 16.2841,
+        "lon": 80.5921,
+        "address": "Chebrolu mandal, Guntur"
+      },
+      {
+        "kind": "hospital",
+        "name": "Area Hospital, Tenali",
+        "lat": 16.242,
+        "lon": 80.64,
+        "address": "Tenali, Guntur"
+      },
+      {
+        "kind": "postal",
+        "name": "Sekuru Sub Post Office",
+        "lat": 16.278,
+        "lon": 80.587,
+        "address": "Sekuru, Guntur"
+      }
+    ],
+    "Nidamarru": [
+      {
+        "kind": "hospital",
+        "name": "PHC Penamaluru",
+        "lat": 16.426,
+        "lon": 80.723,
+        "address": "Penamaluru, Krishna"
+      },
+      {
+        "kind": "postal",
+        "name": "Nidamarru Branch Office",
+        "lat": 16.4198,
+        "lon": 80.7162,
+        "address": "Nidamarru, Krishna"
+      }
+    ],
+    "Hosakote": [
+      {
+        "kind": "hospital",
+        "name": "Government Hospital, Hosakote",
+        "lat": 13.0755,
+        "lon": 77.8012,
+        "address": "Hosakote town, Bengaluru Rural"
+      },
+      {
+        "kind": "postal",
+        "name": "Hosakote Head Post Office",
+        "lat": 13.0698,
+        "lon": 77.7955,
+        "address": "Hosakote, Bengaluru Rural"
+      }
+    ]
+  }
+}

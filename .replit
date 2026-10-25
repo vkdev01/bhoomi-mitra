@@ -1,0 +1,21 @@
+run = "python main.py"
+entrypoint = "main.py"
+modules = ["python-3.12"]
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+BHOOMI_DATA_MODE = "auto"
+BHOOMI_DEFAULT_LANGUAGE = "en-IN"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["python", "main.py"]
+
+[gitHubImport]
+requiredFiles = [".replit", "main.py", "requirements.txt"]
