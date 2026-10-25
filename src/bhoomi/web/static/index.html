@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Bhoomi Mitra — ask about any village</title>
+<link rel="stylesheet" href="/static/vendor/leaflet.css" />
 <style>
   :root {
     --ink: #14201b;
@@ -99,6 +100,28 @@
     vertical-align: -2px; margin-right: 7px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  #map {
+    height: 340px; border-radius: 10px; border: 1px solid var(--line);
+    margin-top: 12px; background: #eef2ef; z-index: 0;
+  }
+  .map-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .map-toolbar > div { flex: 1 1 150px; }
+  .map-toggle { flex: 0 0 auto; padding-bottom: 9px; }
+  .map-toggle label {
+    display: flex; gap: 7px; align-items: center; margin: 0; white-space: nowrap;
+    font-weight: 600; color: var(--ink); font-size: .84rem; cursor: pointer;
+  }
+  .leaflet-container { font: inherit; border-radius: 10px; }
+  .map-legend {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px;
+    font-size: .78rem; color: var(--muted);
+  }
+  .donut-wrap { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .donut-wrap svg { flex: 0 0 auto; }
+  ul.legend { list-style: none; margin: 0; padding: 0; flex: 1 1 250px; }
+  ul.legend li { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: .88rem; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
+  ul.legend .val { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
   footer { text-align: center; color: var(--muted); font-size: .78rem; padding: 0 20px 30px; }
   a { color: var(--green); }
 </style>
@@ -160,6 +183,24 @@
     <div id="report-error" class="err hidden"></div>
     <div id="report-result" class="hidden"></div>
   </section>
+  <section class="card hidden" id="map-card">
+    <h2>Map</h2>
+    <div class="map-toolbar">
+      <div>
+        <label for="base-select">Background</label>
+        <select id="base-select"></select>
+      </div>
+      <div>
+        <label for="year-select">ISRO land cover</label>
+        <select id="year-select"></select>
+      </div>
+      <div class="map-toggle">
+        <label><input type="checkbox" id="overlay-toggle" checked /> Show overlay</label>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div class="map-legend" id="map-legend"></div>
+  </section>
 </main>
 
 <footer>
@@ -167,6 +208,7 @@
   <span id="source-foot"></span>
 </footer>
 
+<script src="/static/vendor/leaflet.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const state = { config: null, recorder: null, chunks: [] };
@@ -348,13 +390,15 @@ function renderReport(report) {
 
   if (report.land_cover && report.land_cover.classes.length) {
     parts.push(`<h2 style="margin:20px 0 8px">Land cover (${escapeHtml(report.land_cover.year)})</h2>`);
-    parts.push('<div class="bars">' + report.land_cover.classes.map((c) => {
+    parts.push('<div class="donut-wrap">');
+    parts.push(donutSvg(report.land_cover.classes));
+    parts.push('<ul class="legend">' + report.land_cover.classes.map((c, i) => {
       const pct = c.share_pct == null ? 0 : c.share_pct;
-      return `<div class="bar">
-        <div class="bar-top"><span>${escapeHtml(c.label)}</span><span>${pct.toFixed(1)}% · ${c.area_sq_km.toFixed(2)} km²</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, pct)}%"></div></div>
-      </div>`;
-    }).join("") + "</div>");
+      return `<li><span class="swatch" style="background:${classColour(c.label, i)}"></span>
+        <span>${escapeHtml(c.label)}</span>
+        <span class="val">${pct.toFixed(1)}% · ${c.area_sq_km.toFixed(2)} km²</span></li>`;
+    }).join("") + "</ul>");
+    parts.push("</div>");
   }
 
   if (report.facilities && report.facilities.length) {
@@ -380,6 +424,7 @@ function renderReport(report) {
 
   parts.push(`<p class="hint" style="margin-top:14px">Source: ${escapeHtml(report.data_source)}</p>`);
   $("report-result").innerHTML = parts.join("");
+  showMapFor(report);
 }
 
 async function toggleMic() {
@@ -443,6 +488,161 @@ async function sendVoice(blob) {
     button.disabled = false;
     button.textContent = "Ask";
   }
+}
+
+// -- charts -----------------------------------------------------------
+
+const CLASS_COLOURS = {
+  "agricultural land": "#d9b44a",
+  "crop land": "#e3cd7a",
+  "built-up land": "#c0504d",
+  "forest": "#2f6f4a",
+  "deciduous forest": "#3d7d52",
+  "evergreen forest": "#245e3c",
+  "water bodies": "#3b7ea1",
+  "tank / reservoir": "#4a90a4",
+  "river / stream": "#5aa7bd",
+  "scrub land": "#a8b06a",
+  "tree clad area": "#5f8d5a",
+  "wasteland": "#b9a48a",
+  "fallow land": "#cdb98f",
+  "plantation": "#7fa86b",
+  "grassland": "#9dbb6a",
+  "sandy area": "#ddc9a3",
+};
+
+const FALLBACK_COLOURS = ["#8aa79b", "#a3b3a8", "#c2cec6", "#7f9a8d", "#b6c4bb"];
+
+function classColour(label, index) {
+  const key = String(label || "").toLowerCase().trim();
+  return CLASS_COLOURS[key] || FALLBACK_COLOURS[index % FALLBACK_COLOURS.length];
+}
+
+function donutSvg(classes) {
+  const total = classes.reduce((sum, c) => sum + (c.area_sq_km || 0), 0) || 1;
+  const R = 52;
+  const circumference = 2 * Math.PI * R;
+  let offset = 0;
+  const segments = classes.map((c, i) => {
+    const fraction = (c.area_sq_km || 0) / total;
+    const length = fraction * circumference;
+    const seg = `<circle cx="60" cy="60" r="${R}" fill="none"
+      stroke="${classColour(c.label, i)}" stroke-width="17"
+      stroke-dasharray="${length.toFixed(2)} ${(circumference - length).toFixed(2)}"
+      stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 60 60)"></circle>`;
+    offset += length;
+    return seg;
+  }).join("");
+  return `<svg viewBox="0 0 120 120" width="128" height="128" role="img"
+    aria-label="Land cover composition">${segments}</svg>`;
+}
+
+// -- map --------------------------------------------------------------
+
+const mapState = { map: null, base: null, overlay: null, layers: null, radius: 5000 };
+
+async function mapLayers() {
+  if (!mapState.layers) mapState.layers = await api("/api/map/layers");
+  return mapState.layers;
+}
+
+function fillSelect(select, items, selectedId, labelOf) {
+  select.innerHTML = "";
+  for (const item of items) {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.textContent = labelOf(item);
+    if (item.id === selectedId) opt.selected = true;
+    select.appendChild(opt);
+  }
+}
+
+function applyBase(layers, baseId) {
+  if (mapState.base) {
+    mapState.map.removeLayer(mapState.base);
+    mapState.base = null;
+  }
+  const base = layers.base_layers.find((b) => b.id === baseId) || layers.base_layers[0];
+  if (base.url_template) {
+    mapState.base = L.tileLayer(base.url_template, {
+      maxZoom: base.max_zoom,
+      attribution: base.attribution,
+    }).addTo(mapState.map);
+  } else {
+    document.getElementById("map").style.background = base.background_colour;
+  }
+}
+
+function applyOverlay(layers, overlayId, visible) {
+  if (mapState.overlay) {
+    mapState.map.removeLayer(mapState.overlay);
+    mapState.overlay = null;
+  }
+  if (!visible) return;
+  const overlay = layers.overlays.find((o) => o.id === overlayId) || layers.overlays[0];
+  mapState.overlay = L.tileLayer.wms(overlay.service_url, {
+    layers: overlay.layer_name,
+    format: "image/png",
+    transparent: true,
+    version: "1.1.1",
+    opacity: overlay.opacity,
+    attribution: overlay.attribution,
+    // The ISRO LULC 1:250,000 service only paints areas wider than about
+    // 100 km, so each request must cover a large ground extent.
+    tileSize: 1024,
+    maxZoom: 10,
+  }).addTo(mapState.map);
+}
+
+async function showMapFor(report) {
+  const point = report.village && report.village.location;
+  if (!point || typeof L === "undefined") return;
+
+  show($("map-card"));
+  mapState.radius = report.radius_m || 5000;
+
+  let layers;
+  try {
+    layers = await mapLayers();
+  } catch (e) {
+    $("map-legend").textContent = "Map layers unavailable: " + e.message;
+    return;
+  }
+
+  const baseSelect = $("base-select");
+  const yearSelect = $("year-select");
+  const toggle = $("overlay-toggle");
+
+  if (!mapState.map) {
+    fillSelect(baseSelect, layers.base_layers, "satellite", (b) => b.title);
+    fillSelect(yearSelect, layers.overlays.slice().reverse(), layers.default_overlay_id, (o) => o.year);
+    mapState.map = L.map("map", { scrollWheelZoom: false }).setView([point.lat, point.lon], 9);
+    baseSelect.addEventListener("change", () => applyBase(layers, baseSelect.value));
+    yearSelect.addEventListener("change", () => applyOverlay(layers, yearSelect.value, toggle.checked));
+    toggle.addEventListener("change", () => applyOverlay(layers, yearSelect.value, toggle.checked));
+  }
+
+  mapState.map.setView([point.lat, point.lon], 9);
+  applyBase(layers, baseSelect.value || "satellite");
+  applyOverlay(layers, yearSelect.value || layers.default_overlay_id, toggle.checked);
+
+  if (mapState.marker) mapState.map.removeLayer(mapState.marker);
+  mapState.marker = L.circleMarker([point.lat, point.lon], {
+    radius: 6, color: "#ffffff", weight: 2, fillColor: "#1f6f4a", fillOpacity: 1,
+  }).addTo(mapState.map);
+
+  if (mapState.radiusCircle) mapState.map.removeLayer(mapState.radiusCircle);
+  mapState.radiusCircle = L.circle([point.lat, point.lon], {
+    radius: mapState.radius, color: "#1f6f4a", weight: 1,
+    fillColor: "#1f6f4a", fillOpacity: 0.06,
+  }).addTo(mapState.map);
+
+  const current = layers.overlays.find((o) => o.id === yearSelect.value) || layers.overlays[0];
+  $("map-legend").innerHTML =
+    `<span>Analysis radius: ${(mapState.radius / 1000).toFixed(0)} km</span>` +
+    `<span>${escapeHtml(current.title)} — a 1:250,000 layer, so it paints when zoomed out</span>`;
+
+  mapState.map.invalidateSize();
 }
 
 $("ask").addEventListener("click", ask);
