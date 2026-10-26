@@ -302,3 +302,31 @@ def test_lulc_50k_shares_are_percentages():
     client = make_json_client(_handler("curl_aoi", payload))
     profile = BhuvanLulc50kProvider(client, "t").profile_for(POINT, radius_m=5000)
     assert sum(c.share_pct for c in profile.classes) == pytest.approx(100.0)
+
+
+# -- wrapped error bodies -------------------------------------------------
+
+
+def test_lulc_error_body_wrapped_in_html_is_detected():
+    """The LULC service wraps its JSON in an HTML page, errors included."""
+    body = (
+        '<!DOCTYPE HTML><html><head><script src="echarts.js"></script></head>\n'
+        '{"error":"invalid_token","error_description":"The access token provided is invalid"}\n'
+        "</html>"
+    )
+    client = make_json_client(_handler("curl_lulc250k", body))
+    with pytest.raises(UpstreamAuthError):
+        BhuvanLulc250kProvider(client, "bad").profile_for(POINT, radius_m=5000)
+
+
+def test_lulc_with_no_usable_area_raises_instead_of_returning_empty():
+    payload = [{"Year": "2015_16", "LULC Code": "l02", "LULC Description": "Agricultural land", "Area in Sq. Km": "0"}]
+    client = make_json_client(_handler("curl_lulc250k", payload))
+    with pytest.raises(UpstreamUnavailableError):
+        BhuvanLulc250kProvider(client, "t").profile_for(POINT, radius_m=5000)
+
+
+def test_lulc_50k_with_no_usable_area_raises():
+    client = make_json_client(_handler("curl_aoi", [{"State": "AP"}]))
+    with pytest.raises(UpstreamUnavailableError):
+        BhuvanLulc50kProvider(client, "t").profile_for(POINT, radius_m=5000)
