@@ -73,7 +73,14 @@ class Settings:
     """Everything the composition root needs to wire the application."""
 
     sarvam_api_key: str | None = None
+
+    # Bhuvan issues its access tokens per theme, so each capability can have
+    # its own. ``bhuvan_token`` is the fallback used when a specific one is unset.
     bhuvan_token: str | None = None
+    bhuvan_token_geocoding: str | None = None
+    bhuvan_token_lulc: str | None = None
+    bhuvan_token_proximity: str | None = None
+    bhuvan_token_routing: str | None = None
 
     sarvam_base_url: str = "https://api.sarvam.ai"
     bhuvan_base_url: str = "https://bhuvan-app1.nrsc.gov.in/api"
@@ -108,13 +115,39 @@ class Settings:
 
     # -- derived ----------------------------------------------------------
 
+    def bhuvan_token_for(self, capability: str) -> str | None:
+        """The token for one Bhuvan theme, falling back to the general one."""
+        specific = {
+            "geocoding": self.bhuvan_token_geocoding,
+            "lulc": self.bhuvan_token_lulc,
+            "proximity": self.bhuvan_token_proximity,
+            "routing": self.bhuvan_token_routing,
+        }.get(capability)
+        return specific or self.bhuvan_token
+
+    @property
+    def has_any_bhuvan_token(self) -> bool:
+        return bool(self.bhuvan_token_for("geocoding") or self.bhuvan_token_for("lulc")
+                    or self.bhuvan_token_for("proximity") or self.bhuvan_token_for("routing"))
+
+    @property
+    def live_geo_capabilities(self) -> tuple[str, ...]:
+        """Which Bhuvan-backed capabilities can run live right now."""
+        if self.data_mode == "fixture":
+            return ()
+        return tuple(
+            name
+            for name in ("geocoding", "lulc", "proximity", "routing")
+            if self.bhuvan_token_for(name)
+        )
+
     @property
     def wants_live_geo(self) -> bool:
         if self.data_mode == "fixture":
             return False
         if self.data_mode == "live":
             return True
-        return bool(self.bhuvan_token)
+        return self.has_any_bhuvan_token
 
     @property
     def wants_live_llm(self) -> bool:
@@ -134,6 +167,10 @@ class Settings:
         return cls(
             sarvam_api_key=_env("SARVAM_API_KEY"),
             bhuvan_token=_env("BHUVAN_TOKEN"),
+            bhuvan_token_geocoding=_env("BHUVAN_TOKEN_GEOCODING"),
+            bhuvan_token_lulc=_env("BHUVAN_TOKEN_LULC"),
+            bhuvan_token_proximity=_env("BHUVAN_TOKEN_PROXIMITY"),
+            bhuvan_token_routing=_env("BHUVAN_TOKEN_ROUTING"),
             sarvam_base_url=_env("SARVAM_BASE_URL", "https://api.sarvam.ai") or "",
             bhuvan_base_url=_env("BHUVAN_BASE_URL", "https://bhuvan-app1.nrsc.gov.in/api") or "",
             bhuvan_wms_url=_env(
@@ -160,10 +197,19 @@ class Settings:
             max_agent_steps=_env_int("BHOOMI_MAX_AGENT_STEPS", 5),
         )
 
+    def _geo_source_label(self) -> str:
+        live = self.live_geo_capabilities
+        if not live:
+            return "fixture"
+        if len(live) == 4:
+            return "bhuvan-live"
+        return "mixed"
+
     def public_summary(self) -> dict[str, object]:
         """Safe to expose over HTTP: never includes a secret."""
         return {
-            "geo_source": "bhuvan-live" if self.wants_live_geo else "fixture",
+            "geo_source": self._geo_source_label(),
+            "live_capabilities": list(self.live_geo_capabilities),
             "llm_source": "sarvam-105b" if self.wants_live_llm else "rule-based-offline",
             "speech_available": self.wants_live_speech,
             "lulc_scale": self.lulc_scale,
