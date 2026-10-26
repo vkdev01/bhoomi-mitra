@@ -57,7 +57,7 @@ python main.py            # → http://localhost:8000
 Verify it:
 
 ```bash
-python -m pytest          # 166 tests
+python -m pytest          # 173 tests
 python scripts/smoke_test.py   # boots a real server and exercises every endpoint
 ```
 
@@ -67,8 +67,34 @@ Copy `.env.example` to `.env` and fill in whichever credentials you have. The fi
 
 | Variable | What it unlocks | Where to get it |
 |---|---|---|
-| `BHUVAN_TOKEN` | Live ISRO Bhuvan data instead of sample fixtures | [bhuvan-app1.nrsc.gov.in/api](https://bhuvan-app1.nrsc.gov.in/api/) — register, then "Get Access Token" per theme |
+| `BHUVAN_TOKEN_GEOCODING`<br>`BHUVAN_TOKEN_LULC`<br>`BHUVAN_TOKEN_PROXIMITY`<br>`BHUVAN_TOKEN_ROUTING` | Live ISRO Bhuvan data, one theme at a time | See below |
 | `SARVAM_API_KEY` | Sarvam-105B for the agent, plus voice in and out | [dashboard.sarvam.ai](https://dashboard.sarvam.ai) |
+
+### Getting a Bhuvan token
+
+Bhuvan does not issue one token for everything. Tokens are **per theme**, and each **expires after about a day** — which is the single most common reason a working setup suddenly starts failing.
+
+1. **Register** an account: <https://bhuvan-cas1.nrsc.gov.in/new_cas_files/WebClientProfile.php> (this is the NRSC single sign-on that Bhuvan's API portal uses).
+2. **Log in** at <https://bhuvan-app1.nrsc.gov.in/api/>.
+3. On that page, open **Access Token**, pick one theme from the dropdown, accept the terms, and press **Get Access Token**. Copy the token.
+4. Repeat step 3 for each theme you need, and put each token in its own variable.
+
+| Capability in this app | Theme to select |
+|---|---|
+| Place lookup (name → village, coordinates → village) | **Village Geocoding** and **Village Reverse Geocoding** |
+| Land-cover statistics | **LULC AOI Wise** (for `BHUVAN_LULC_SCALE=250k`) or **LULC Statistics** (for `50k`) |
+| Nearby hospitals and post offices | **Postal and Hospital** |
+| Road distance | **Routing** |
+
+```bash
+export BHUVAN_TOKEN_GEOCODING=...
+export BHUVAN_TOKEN_LULC=...
+export BHUVAN_TOKEN_PROXIMITY=...
+export BHUVAN_TOKEN_ROUTING=...
+python scripts/check_live.py
+```
+
+You do not need all of them to start. A capability without a token quietly falls back to bundled sample data, and `GET /api/config` reports `geo_source` as `mixed` along with the list of capabilities that are genuinely live — the header badge shows the same thing in amber, so a half-live setup is never mistaken for a fully live one. A single `BHUVAN_TOKEN` still works as a fallback for any theme you leave unset.
 
 `BHOOMI_DATA_MODE` controls this explicitly: `auto` (default — live where credentials exist), `live` (force live), `fixture` (force sample data).
 
@@ -211,7 +237,7 @@ Things you should know before relying on this:
 ## Testing
 
 ```bash
-python -m pytest                     # 166 tests, ~2 s, no network
+python -m pytest                     # 173 tests, ~2 s, no network
 python -m pytest tests/test_contracts.py -v   # substitutability, both adapters
 python scripts/smoke_test.py         # 15 end-to-end checks against a real server
 python scripts/check_live.py         # validates real credentials against the real services
