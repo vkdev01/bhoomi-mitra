@@ -57,7 +57,7 @@ python main.py            # → http://localhost:8000
 Verify it:
 
 ```bash
-python -m pytest          # 152 tests
+python -m pytest          # 155 tests
 python scripts/smoke_test.py   # boots a real server and exercises every endpoint
 ```
 
@@ -71,6 +71,16 @@ Copy `.env.example` to `.env` and fill in whichever credentials you have. Each o
 | `SARVAM_API_KEY` | Sarvam-105B for the agent, plus voice in and out | [dashboard.sarvam.ai](https://dashboard.sarvam.ai) |
 
 `BHOOMI_DATA_MODE` controls this explicitly: `auto` (default — live where credentials exist), `live` (force live), `fixture` (force sample data).
+
+Before opening the browser, check the credentials actually work:
+
+```bash
+export BHUVAN_TOKEN=...
+export SARVAM_API_KEY=...
+python scripts/check_live.py
+```
+
+It calls the real services through the real adapters and prints a pass/fail line per capability — geocoding, LULC, proximity, routing, chat, speech — with the exact reason for anything that fails. Exit code 0 means all good, 1 means something is broken, 2 means nothing is configured yet.
 
 The UI always shows which mode is active, so an answer is never mistaken for live data when it isn't.
 
@@ -187,9 +197,10 @@ Things you should know before relying on this:
 ## Testing
 
 ```bash
-python -m pytest                     # 152 tests, ~2 s, no network
+python -m pytest                     # 155 tests, ~2 s, no network
 python -m pytest tests/test_contracts.py -v   # substitutability, both adapters
 python scripts/smoke_test.py         # 15 end-to-end checks against a real server
+python scripts/check_live.py         # validates real credentials against the real services
 ruff check src tests
 ```
 
