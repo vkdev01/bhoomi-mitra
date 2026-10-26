@@ -76,6 +76,17 @@ def build_container(settings: Settings | None = None) -> Container:
     closers: list = []
 
     # -- geo ------------------------------------------------------------
+    # Bhuvan hands out one token per theme, so each capability is wired
+    # independently. A capability without a token falls back to the fixture
+    # provider rather than failing the whole request, and the data source is
+    # reported as "mixed" so nobody mistakes sample figures for live ones.
+    fixture = FixtureGeoProvider(settings.fixture_path)
+    places: PlaceResolver = fixture
+    land_cover: LandCoverProvider = fixture
+    facilities: FacilityProvider = fixture
+    routes: RouteProvider | None = fixture
+    live: list[str] = []
+
     if settings.wants_live_geo:
         geo_client = HttpJsonClient(
             settings.bhuvan_base_url,
@@ -83,22 +94,34 @@ def build_container(settings: Settings | None = None) -> Container:
             max_retries=settings.http_max_retries,
         )
         closers.append(geo_client.close)
-        token = settings.bhuvan_token or ""
-        places: PlaceResolver = BhuvanPlaceResolver(geo_client, token)
-        facilities: FacilityProvider = BhuvanFacilityProvider(geo_client, token)
-        routes: RouteProvider | None = BhuvanRouteProvider(geo_client, token)
-        if settings.lulc_scale == "50k":
-            land_cover: LandCoverProvider = BhuvanLulc50kProvider(geo_client, token)
-        else:
-            land_cover = BhuvanLulc250kProvider(geo_client, token)
-        data_source = "bhuvan-live"
-    else:
-        fixture = FixtureGeoProvider(settings.fixture_path)
-        places = fixture
-        land_cover = fixture
-        facilities = fixture
-        routes = fixture
-        data_source = "fixture"
+
+        geocoding_token = settings.bhuvan_token_for("geocoding")
+        if geocoding_token:
+            places = BhuvanPlaceResolver(geo_client, geocoding_token)
+            live.append("geocoding")
+
+        proximity_token = settings.bhuvan_token_for("proximity")
+        if proximity_token:
+            facilities = BhuvanFacilityProvider(geo_client, proximity_token)
+            live.append("proximity")
+
+        routing_token = settings.bhuvan_token_for("routing")
+        if routing_token:
+            routes = BhuvanRouteProvider(geo_client, routing_token)
+            live.append("routing")
+
+        lulc_token = settings.bhuvan_token_for("lulc")
+        if lulc_token:
+            land_cover = (
+                BhuvanLulc50kProvider(geo_client, lulc_token)
+                if settings.lulc_scale == "50k"
+                else BhuvanLulc250kProvider(geo_client, lulc_token)
+            )
+            live.append("lulc")
+
+    data_source = (
+        "bhuvan-live" if len(live) == 4 else "mixed" if live else "fixture"
+    )
 
     # -- language model --------------------------------------------------
     if settings.wants_live_llm:
