@@ -1,7 +1,10 @@
 """Application settings, read once from the environment.
 
-Deliberately dependency-free: a frozen dataclass plus ``os.environ``. Secrets
-are never logged and never defaulted to a real value.
+Deliberately dependency-free: a frozen dataclass plus ``os.environ``, with a
+small ``.env`` reader so a local checkout behaves the way the README describes.
+Real environment variables always win, so a host that injects its own secrets
+(Replit, Docker, CI) is never overridden. Secrets are never logged and never
+defaulted to a real value.
 """
 
 from __future__ import annotations
@@ -11,6 +14,30 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 _TRUE = {"1", "true", "yes", "on"}
+
+
+def load_dotenv(path: Path | None = None) -> None:
+    """Read a ``.env`` file into ``os.environ`` without overriding anything.
+
+    Quiet by design: a missing or malformed file is not an error, because most
+    deployments have no ``.env`` at all. Quotes around values are stripped, and
+    ``#`` starts a comment.
+    """
+    target = path or Path.cwd() / ".env"
+    try:
+        raw = target.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    for line in raw.splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#") or "=" not in entry:
+            continue
+        key, _, value = entry.partition("=")
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip().strip('"').strip("'")
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -102,7 +129,8 @@ class Settings:
         return bool(self.sarvam_api_key)
 
     @classmethod
-    def from_env(cls) -> Settings:
+    def from_env(cls, *, dotenv_path: Path | None = None) -> Settings:
+        load_dotenv(dotenv_path)
         return cls(
             sarvam_api_key=_env("SARVAM_API_KEY"),
             bhuvan_token=_env("BHUVAN_TOKEN"),
