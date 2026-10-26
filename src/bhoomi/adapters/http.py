@@ -190,11 +190,13 @@ def _snippet(text: str, limit: int = 200) -> str:
 
 
 def _raise_on_error_body(text: str, url: str) -> None:
-    """Bhuvan answers 200 with ``{"error": ...}`` for a bad token."""
-    try:
-        payload = json.loads(text)
-    except (json.JSONDecodeError, TypeError):
-        return
+    """Bhuvan answers 200 with ``{"error": ...}`` for a bad token.
+
+    Some endpoints wrap that body in an HTML page, so this must use the same
+    tolerant extraction as a normal response - otherwise an auth failure looks
+    like an empty success.
+    """
+    payload = _try_parse(text)
     if not isinstance(payload, dict):
         return
     for key in _ERROR_KEYS:
@@ -205,13 +207,16 @@ def _raise_on_error_body(text: str, url: str) -> None:
             raise UpstreamAuthError(f"{url} reported {key}={message}")
 
 
-def parse_json_body(text: str) -> Any:
-    """Parse a JSON body that may be embedded in an HTML wrapper."""
-    if text is None:
-        raise UpstreamUnavailableError("empty response body")
+_MISSING = object()
+
+
+def _try_parse(text: str) -> Any:
+    """Best-effort JSON extraction. Returns ``_MISSING`` when nothing parses."""
+    if not text:
+        return _MISSING
     stripped = text.strip()
     if not stripped:
-        raise UpstreamUnavailableError("empty response body")
+        return _MISSING
 
     try:
         return json.loads(stripped)
@@ -225,7 +230,16 @@ def parse_json_body(text: str) -> Any:
         except json.JSONDecodeError:
             pass
 
-    lowered = stripped.lower()
-    if lowered in ("false", "null"):
+    if stripped.lower() in ("false", "null"):
         return None
-    raise UpstreamUnavailableError(f"response was not JSON: {_snippet(stripped)}")
+    return _MISSING
+
+
+def parse_json_body(text: str) -> Any:
+    """Parse a JSON body that may be embedded in an HTML wrapper."""
+    parsed = _try_parse(text)
+    if parsed is _MISSING:
+        raise UpstreamUnavailableError(
+            f"response was not JSON: {_snippet(text or '')}"
+        )
+    return parsed
