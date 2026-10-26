@@ -67,70 +67,67 @@ def explain(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
-def check_bhuvan(settings: Settings) -> None:
-    if not settings.bhuvan_token:
-        for capability in (
-            "Bhuvan village geocoding",
-            "Bhuvan LULC statistics",
-            "Bhuvan hospital/post office proximity",
-            "Bhuvan routing",
-        ):
-            record(capability, "skip", "BHUVAN_TOKEN not set")
-        return
+# capability key -> (label, the theme you must pick on the Bhuvan token page)
+BHUVAN_CAPABILITIES = (
+    ("geocoding", "Bhuvan village geocoding", "Village Geocoding"),
+    ("lulc", "Bhuvan LULC statistics", "LULC AOI Wise"),
+    ("proximity", "Bhuvan hospital/post office proximity", "Postal and Hospital"),
+    ("routing", "Bhuvan routing", "Routing"),
+)
 
+
+def check_bhuvan(settings: Settings) -> None:
     client = HttpJsonClient(
         settings.bhuvan_base_url,
         timeout_s=settings.http_timeout_s,
         max_retries=0,  # fail fast while diagnosing
     )
-    token = settings.bhuvan_token
-    try:
-        village = BhuvanPlaceResolver(client, token).resolve(PROBE_PLACE)
-        detail = f"resolved {village.label}"
-        if village.population:
-            detail += f", population {village.population:,}"
-        record("Bhuvan village geocoding", "ok", detail)
-    except Exception as exc:  # noqa: BLE001
-        record("Bhuvan village geocoding", "fail", explain(exc))
+    any_token = False
 
-    try:
-        profile = BhuvanLulc250kProvider(client, token).profile_for(
-            PROBE_POINT, radius_m=5000
-        )
-        top = profile.dominant()
-        record(
-            "Bhuvan LULC statistics",
-            "ok",
-            f"{profile.year}, {len(profile.classes)} classes"
-            + (f", mostly {top.label}" if top else ""),
-        )
-    except Exception as exc:  # noqa: BLE001
-        record("Bhuvan LULC statistics", "fail", explain(exc))
+    for key, label, theme in BHUVAN_CAPABILITIES:
+        token = settings.bhuvan_token_for(key)
+        if not token:
+            record(label, "skip", f"no token for the '{theme}' theme")
+            continue
+        any_token = True
 
-    try:
-        found = BhuvanFacilityProvider(client, token).nearby(
-            PROBE_POINT, radius_m=5000
-        )
-        record(
-            "Bhuvan hospital/post office proximity",
-            "ok",
-            f"{len(found)} facilities nearby",
-        )
-    except Exception as exc:  # noqa: BLE001
-        record("Bhuvan hospital/post office proximity", "fail", explain(exc))
+        try:
+            if key == "geocoding":
+                village = BhuvanPlaceResolver(client, token).resolve(PROBE_PLACE)
+                detail = f"resolved {village.label}"
+                if village.population:
+                    detail += f", population {village.population:,}"
+            elif key == "lulc":
+                provider = (
+                    BhuvanLulc50kProvider(client, token)
+                    if settings.lulc_scale == "50k"
+                    else BhuvanLulc250kProvider(client, token)
+                )
+                profile = provider.profile_for(PROBE_POINT, radius_m=5000)
+                top = profile.dominant()
+                detail = f"{profile.year}, {len(profile.classes)} classes" + (
+                    f", mostly {top.label}" if top else ""
+                )
+            elif key == "proximity":
+                found = BhuvanFacilityProvider(client, token).nearby(
+                    PROBE_POINT, radius_m=5000
+                )
+                detail = f"{len(found)} facilities nearby"
+            else:
+                route = BhuvanRouteProvider(client, token).route(
+                    PROBE_POINT, Coordinates(lat=16.2841, lon=80.5921)
+                )
+                if route.distance_km is None:
+                    raise UpstreamUnavailableError("reachable, but no route returned")
+                detail = f"{route.distance_km:.1f} km"
+            record(label, "ok", detail)
+        except Exception as exc:  # noqa: BLE001
+            record(label, "fail", explain(exc))
 
-    try:
-        route = BhuvanRouteProvider(client, token).route(
-            PROBE_POINT, Coordinates(lat=16.2841, lon=80.5921)
-        )
-        if route.distance_km is None:
-            record("Bhuvan routing", "fail", "reachable, but no route returned")
-        else:
-            record("Bhuvan routing", "ok", f"{route.distance_km:.1f} km")
-    except Exception as exc:  # noqa: BLE001
-        record("Bhuvan routing", "fail", explain(exc))
-
-    client.close()
+    if any_token:
+        client.close()
+    else:
+        client.close()
 
 
 def check_sarvam(settings: Settings) -> None:
@@ -186,9 +183,11 @@ def main() -> int:
             print(f"  - {capability}: {detail}")
         if any("token rejected" in d for _, _, d in failed):
             print(
-                "\n  Bhuvan tokens expire. Get a fresh one at\n"
-                "  https://bhuvan-app1.nrsc.gov.in/api/ (log in, then 'Get Access Token').\n"
-                "  Tokens are issued per theme, so select the themes you need."
+                "\n  Bhuvan tokens are issued PER THEME and expire after a day.\n"
+                "  Get them at https://bhuvan-app1.nrsc.gov.in/api/ — log in, then\n"
+                "  'Get Access Token', choosing one theme at a time. Put each in its\n"
+                "  own variable: BHUVAN_TOKEN_GEOCODING, BHUVAN_TOKEN_LULC,\n"
+                "  BHUVAN_TOKEN_PROXIMITY, BHUVAN_TOKEN_ROUTING."
             )
         return 1
 
