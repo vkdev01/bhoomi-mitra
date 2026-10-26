@@ -1,4 +1,6 @@
-run = "python main.py"
+# Replit entry point. Import this repository with "Import from GitHub" and this
+# file does the rest: Python 3.12, dependencies installed, served on port 8000.
+run = "bash run.sh"
 entrypoint = "main.py"
 modules = ["python-3.12"]
 
@@ -15,7 +17,7 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["python", "main.py"]
+run = ["bash", "run.sh"]
 
 [gitHubImport]
-requiredFiles = [".replit", "main.py", "requirements.txt"]
+requiredFiles = [".replit", "run.sh", "requirements.txt", "main.py"]
