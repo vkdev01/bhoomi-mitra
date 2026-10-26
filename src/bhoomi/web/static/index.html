@@ -238,8 +238,15 @@ async function loadConfig() {
   const badges = $("badges");
   badges.innerHTML = "";
   const geo = document.createElement("span");
-  geo.className = "badge" + (cfg.geo_source === "fixture" ? " warn" : "");
-  geo.textContent = cfg.geo_source === "fixture" ? "sample data (no Bhuvan token)" : "live ISRO Bhuvan";
+  const liveCaps = cfg.live_capabilities || [];
+  geo.className = "badge" + (cfg.geo_source === "bhuvan-live" ? "" : " warn");
+  if (cfg.geo_source === "bhuvan-live") {
+    geo.textContent = "live ISRO Bhuvan";
+  } else if (cfg.geo_source === "mixed") {
+    geo.textContent = "partly live: " + (liveCaps.join(", ") || "none");
+  } else {
+    geo.textContent = "sample data (no Bhuvan token)";
+  }
   badges.appendChild(geo);
 
   const llm = document.createElement("span");
