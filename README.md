@@ -57,13 +57,13 @@ python main.py            # → http://localhost:8000
 Verify it:
 
 ```bash
-python -m pytest          # 155 tests
+python -m pytest          # 166 tests
 python scripts/smoke_test.py   # boots a real server and exercises every endpoint
 ```
 
 ### Turning on live data
 
-Copy `.env.example` to `.env` and fill in whichever credentials you have. Each one upgrades one layer independently.
+Copy `.env.example` to `.env` and fill in whichever credentials you have. The file is read automatically at startup, and real environment variables always take precedence over it, so hosts that inject secrets are never overridden. Each credential upgrades one layer independently.
 
 | Variable | What it unlocks | Where to get it |
 |---|---|---|
@@ -83,6 +83,20 @@ python scripts/check_live.py
 It calls the real services through the real adapters and prints a pass/fail line per capability — geocoding, LULC, proximity, routing, chat, speech — with the exact reason for anything that fails. Exit code 0 means all good, 1 means something is broken, 2 means nothing is configured yet.
 
 The UI always shows which mode is active, so an answer is never mistaken for live data when it isn't.
+
+---
+
+## Running on Replit
+
+The repo carries its own `.replit` and a `run.sh`, so Replit needs no configuration:
+
+1. In Replit, choose **Create App → Import from GitHub** and pick `vkdev01/bhoomi-mitra`.
+2. Wait for it to open. `run.sh` installs `requirements.txt` and starts the server on port 8000; the web preview picks it up automatically.
+3. For live data, add `BHUVAN_TOKEN` and `SARVAM_API_KEY` under **Secrets** (not `.env`) and restart. Secrets are injected as environment variables, which the app reads first.
+
+Use the **Import from GitHub** flow rather than Replit's AI app builder. The builder scaffolds its own Node/pnpm workspace and will not import an existing Python project — that is a property of the builder, not of this repo.
+
+Without secrets it still runs: it starts on bundled sample data with the offline planner, and the header badges say so.
 
 ---
 
@@ -197,7 +211,7 @@ Things you should know before relying on this:
 ## Testing
 
 ```bash
-python -m pytest                     # 155 tests, ~2 s, no network
+python -m pytest                     # 166 tests, ~2 s, no network
 python -m pytest tests/test_contracts.py -v   # substitutability, both adapters
 python scripts/smoke_test.py         # 15 end-to-end checks against a real server
 python scripts/check_live.py         # validates real credentials against the real services
