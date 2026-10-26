@@ -113,6 +113,7 @@ class VoiceOut(AskOut):
 
 class ConfigOut(BaseModel):
     geo_source: str
+    live_capabilities: list[str] = []
     llm_source: str
     speech_available: bool
     lulc_scale: str
