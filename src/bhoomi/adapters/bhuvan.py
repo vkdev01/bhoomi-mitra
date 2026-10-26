@@ -375,6 +375,11 @@ def _profile_from_year_records(
 
 def _build_profile(year: str, areas: Mapping[str, float]) -> LandCoverProfile:
     total = sum(areas.values())
+    if total <= 0:
+        raise UpstreamUnavailableError(
+            "LULC service returned no usable class areas; this usually means the "
+            "area is outside its coverage or the request was rejected"
+        )
     classes = tuple(
         LandCoverClass(
             code=_code_for_label(label),
