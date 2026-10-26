@@ -189,3 +189,9 @@ def test_map_layers_year_labels_are_human_readable(client):
     years = [o["year"] for o in client.get("/api/map/layers").json()["overlays"]]
     assert "2015-16" in years
     assert "2024-25" in years
+
+
+def test_config_reports_per_capability_live_state(client):
+    body = client.get("/api/config").json()
+    assert body["geo_source"] == "fixture"
+    assert body["live_capabilities"] == []
